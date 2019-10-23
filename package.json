@@ -1,0 +1,36 @@
+{
+  "name": "injectinator",
+  "version": "1.0.0",
+  "description": "An easy-to-use, powerful dependency injection library for TypeScript",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DonIsaac/Injectionator.git"
+  },
+  "keywords": [
+    "dependency",
+    "injection",
+    "typescript",
+    "node",
+    "di"
+  ],
+  "author": "Donald Isaac",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DonIsaac/Injectionator/issues"
+  },
+  "homepage": "https://github.com/DonIsaac/Injectionator#readme",
+  "dependencies": {
+    "@types/node": "^12.7.11",
+    "reflect-metadata": "^0.1.13"
+  },
+  "devDependencies": {
+    "@types/jest": "^24.0.18",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.1.0",
+    "typescript": "^3.6.3"
+  }
+}
