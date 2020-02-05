@@ -1,6 +1,6 @@
 /**
  * Integration Tests
- * 
+ *
  * @author Donald Isaac
  * @license MIT
  */
@@ -225,6 +225,7 @@ test('Equipt a soldier for battle', function () {
   let johnWick: Soldier    = new Soldier();
   let chuckNorris: Soldier = new Soldier();
 
+  expect(chuckNorris.secondary).toBeDefined();
   expect(chuckNorris.secondary.getAttackDamage()).toBe(15);
 
   johnWick.attack(chuckNorris);

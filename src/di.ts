@@ -1,20 +1,19 @@
 /**
  * di.ts
- * 
+ *
  * Defines globally used data types and interfaces.
  *
  * @author Donald Isaac
  * @license MIT
  *
  */
-
 import 'reflect-metadata';
 
 /**
  * A class/constructor/newable function with type `T`.
  */
 export interface Type<T> extends NewableFunction {
-  new(...args: any[]): T;
+    new(...args: any[]): T;
 }
 
 /**

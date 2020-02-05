@@ -3,5 +3,7 @@ import 'reflect-metadata';
 
 describe('The injector decorator', function() {
 
-	it('')
+	it('', () => {
+
+	})
 });
