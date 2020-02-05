@@ -27,7 +27,7 @@ export interface InjectPropOptions {
 //     // empty
 //   };
 // }
-export function Inject(opts: InjectPropOptions) {
+export function Inject(opts: InjectPropOptions): PropertyOrClassDecorator {
   return function (target: Object | Function, key?: string | symbol): void {
     if (key) { // key exists iff Inject is used as a property decorator
       let { token, providedIn } = opts;
@@ -43,7 +43,7 @@ export function Inject(opts: InjectPropOptions) {
         });
       }
     } else {
-      // TODO
+
     }
   };
 }
