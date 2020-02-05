@@ -1,8 +1,10 @@
 /**
- * A tiny dependency injection library. I needed to make my own because
- * typescript-ioc was broken and every other available option sucks.
+ * di.ts
+ * 
+ * Defines globally used data types and interfaces.
  *
  * @author Donald Isaac
+ * @license MIT
  *
  */
 

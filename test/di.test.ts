@@ -1,3 +1,9 @@
+/**
+ * Integration Tests
+ * 
+ * @author Donald Isaac
+ * @license MIT
+ */
 import { Injector, Inject, Injectable, Provider, ClassProvider } from '../src/';
 import 'reflect-metadata';
 
@@ -5,6 +11,9 @@ import 'reflect-metadata';
  * ==== TEST ====
  */
 test('Injector properly binds to a ClassProvider', () => {
+
+  let injector: Injector = Injector.GlobalInjector;
+
   @Injectable()
   class Dependency {
     public prop: string;
@@ -18,20 +27,15 @@ test('Injector properly binds to a ClassProvider', () => {
     }
   }
 
-  let injector: Injector = new Injector();
-  let provider: Provider<Dependency> = new ClassProvider(Dependency);
 
   @Inject({ providedIn: injector })
   class Receiver {
-    public dep: Dependency;
-
-    constructor(dep: Dependency) {
-      this.dep = dep;
-    }
+    constructor(public dep: Dependency) { }
   }
-
+  //
   // test code
 
+  let provider: Provider<Dependency> = new ClassProvider(Dependency);
   injector.bind(provider);
   let result: Receiver = injector.apply<Receiver>(Receiver);
 
@@ -46,7 +50,7 @@ test('Injector properly binds to a ClassProvider', () => {
  * ==== TEST ====
  */
 test('Inject property decorator injects expected value', () => {
-  let injector: Injector = new Injector();
+  let injector: Injector = Injector.GlobalInjector;
 
   @Injectable()
   class Dependency {
@@ -81,7 +85,6 @@ test('Inject property decorator injects expected value', () => {
 test('Equipt a soldier for battle', function () {
   // Create a new Injector
   let injector: Injector = new Injector();
-
   @Injectable()
   class Armor {
     private protection: number = 5;
