@@ -28,7 +28,7 @@ test('Injector properly binds to a ClassProvider', () => {
   }
 
 
-  @Inject({ providedIn: injector })
+  @Inject()
   class Receiver {
     constructor(public dep: Dependency) { }
   }

@@ -24,10 +24,14 @@
   },
   "homepage": "https://github.com/DonIsaac/Injectionator#readme",
   "dependencies": {
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.1.13",
+    "tslib": "^1.11.0"
   },
   "devDependencies": {
     "@types/jest": "^24.0.18",
-    "@types/node": "^12.12.26"
+    "@types/node": "^12.12.26",
+    "jest": "^25.1.0",
+    "ts-jest": "^25.2.1",
+    "typescript": "^3.8.2"
   }
 }
