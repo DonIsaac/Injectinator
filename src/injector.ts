@@ -38,7 +38,7 @@ export interface Provider<T> {
      *
      * @returns a new instance of the dependency
      */
-    create(injector: Injector, ...args: any[]): T;
+    create(injector: Injector): T;
 }
 
 /**
@@ -88,7 +88,7 @@ export class ClassProvider<T> implements Provider<T> {
             this.token = clazz;
     }
 
-    public create(injector: Injector, ...args: any[]): T {
+    public create(injector: Injector): T {
         // return new this.clazz(args);
         return injector.apply<T>(this.clazz);
     }
@@ -103,7 +103,7 @@ export class ObjectProvider<T> implements Provider<T> {
         this.token = token;
     }
 
-    public create(injector: Injector, ...args: any[]): T {
+    public create(injector: Injector): T {
         return this.obj;
     }
 }
@@ -117,21 +117,24 @@ export class FactoryProvider<T> implements Provider<T> {
         this.token = token;
     }
 
-    public create(injector: Injector, ...args: any[]): T {
-        if (args.length !== 0) {
-            return this.factory(args);
-        } else { // No arguments provided on creation, resolve them from the injector.
-            args = Reflect.getMetadata('design:paramtypes', this.factory) as InjectorToken<any>[];
-
-            if (!args)
-                throw new Error(`Could not call factory function: param types not found.`);
-
-            let params = args.map(injector.apply);
-            return this.factory(params);
-        }
+    public create(injector: Injector): T {
+        return injector.apply(this.factory);
     }
 }
 
+export interface ProviderOptions<T> {
+  /** Token the provider will be provided under. */
+  key: InjectorToken<T>;
+
+  /** Provide a class */
+  provide?: Type<T>;
+
+  /** Provide a function */
+  provideFactory?: FactoryFunction<T>;
+
+  /** Provide an object */
+  provideConstant?: T;
+}
 
 /**
  * TODO
@@ -230,17 +233,65 @@ export class Injector {
         return new Injector(this);
     }
 
+    public bind<T>(options: ProviderOptions<T>): this;
+    
     /**
      * Binds a `Provider` to the `Injector`. Once a provider has been bound,
      * it becomes an accessible dependency that can be injected or obtained
      * through other means.
      *
      * @param provider  The provider to bind.
-     * @param args      Arguments to pass to the provider upon construction.
      *
      * @returns         `this` for method chaining.
      */
-    public bind<T>(provider: Provider<T>, ...args: any[]): this {
+    public bind<T>(provider: Provider<T>): this;
+    public bind<T>(provider: Type<T>): this;
+    public bind<T>(options: ProviderOptions<T>): this;
+    public bind<T>(dto: ProviderOptions<T> | Provider<T> | Type<T>): this {
+        let provider: Provider<T>;
+
+        if (dto == null) {
+            throw new Error('Provider value is null');
+        }
+
+
+        if((dto as Provider<T>).create && (dto as Provider<T>).token) {     // dto is a Provider
+            provider = dto as Provider<T>;
+
+        } else {
+            if ((dto as ProviderOptions<T>).provide) {                      // dto specifies a class provider
+                let { key, provide } = dto as ProviderOptions<T>;
+                // @ts-ignore
+                provider = new ClassProvider<T>(provide, key);
+
+            } else if ((dto as ProviderOptions<T>).provideFactory != null) { // dto specifies a factory provider
+                let { key, provideFactory } = dto as ProviderOptions<T>;
+                // @ts-ignore
+                provider = new FactoryProvider<T>(provideFactory, key);
+
+            } else if ((dto as ProviderOptions<T>).provideConstant) {        // dto specifies a const provider
+                let { key, provideConstant } = dto as ProviderOptions<T>;
+                // @ts-ignore
+                provider = new ObjectProvider<T>(provideConstant, key);
+
+            } else {                                                        // class provider again
+                provider = new ClassProvider(dto as Type<T>);
+            }
+        }
+
+        return this._bind<T>(provider);
+    }
+
+    /**
+     * Binds a `Provider` to the `Injector`. Once a provider has been bound,
+     * it becomes an accessible dependency that can be injected or obtained
+     * through other means.
+     *
+     * @param provider  The provider to bind.
+     *
+     * @returns         `this` for method chaining.
+     */
+    private _bind<T>(provider: Provider<T>): this {
         let token: InjectorToken<T> = provider.token;
 
         // Prevent double binding / re-binding of providers
@@ -251,7 +302,7 @@ export class Injector {
         }
 
         // Add the dependency to the dependency map
-        this.dependencies.set(token, provider.create(this, args));
+        this.dependencies.set(token, provider.create(this));
 
         return this;
     }
