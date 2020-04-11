@@ -35,7 +35,7 @@ test('Injector properly binds to a ClassProvider', () => {
   //
   // test code
 
-  let provider: Provider<Dependency> = new ClassProvider(Dependency);
+  let provider: Provider<Dependency> = new ClassProvider(Dependency, false);
   injector.bind(provider);
   let result: Receiver = injector.apply<Receiver>(Receiver);
 
@@ -46,6 +46,30 @@ test('Injector properly binds to a ClassProvider', () => {
   expect(foo).toEqual('Foo called, prop: Dependency property');
 }); // end test
 
+/**
+ * ==== TEST ====
+ */
+test('Injector properly injects a ObjectProvider', () => {
+  const MY_NUM = 6;
+  const SECOND_NUM = 7;
+
+  Injector.GlobalInjector.bind<number>({ key: 'MY_NUM', provideConstant: MY_NUM });
+
+  class Receiver {
+    @Inject('MY_NUM')
+    num!: number;
+
+    constructor() { /* */ }
+
+    public addNum(a: number): number {
+      return this.num + a;
+    }
+  }
+
+  let rec = new Receiver();
+  expect(rec.num).toBe(MY_NUM);
+  expect(rec.addNum(5)).toBe(5 + MY_NUM);
+})
 /**
  * ==== TEST ====
  */
@@ -65,7 +89,7 @@ test('Inject property decorator injects expected value', () => {
     }
   }
 
-  let provider: Provider<Dependency> = new ClassProvider(Dependency);
+  let provider: Provider<Dependency> = new ClassProvider(Dependency, true);
   injector.bind<Dependency>(provider);
 
   class Receiver {
@@ -97,7 +121,7 @@ test('Equipt a soldier for battle', function () {
   }
 
   // Bind Armor to the Injector
-  let armorProvider: Provider<Armor> = new ClassProvider(Armor);
+  let armorProvider: Provider<Armor> = new ClassProvider(Armor, true);
   injector.bind<Armor>(armorProvider);
 
   interface Projectile {
@@ -125,7 +149,7 @@ test('Equipt a soldier for battle', function () {
   }
 
   // Create providers for the projectiles
-  let bulletProvider: Provider<Bullet> = new ClassProvider(Bullet);
+  let bulletProvider: Provider<Bullet> = new ClassProvider(Bullet, true);
 
   // Bind them to the Injector
   injector.bind<Bullet>(bulletProvider);
@@ -175,8 +199,8 @@ test('Equipt a soldier for battle', function () {
   }
 
   // Create Providers for the weapons
-  let musketProvider: Provider<Musket> = new ClassProvider(Musket, 'primary');
-  let swordProvider: Provider<Sword>   = new ClassProvider(Sword, 'secondary');
+  let musketProvider: Provider<Musket> = new ClassProvider(Musket, true, 'primary');
+  let swordProvider: Provider<Sword>   = new ClassProvider(Sword, true, 'secondary');
 
   // Bind the providers to the Injector
   injector.bind<Weapon>(swordProvider).bind<Weapon>(musketProvider);

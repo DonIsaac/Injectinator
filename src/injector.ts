@@ -27,18 +27,20 @@ export interface Provider<T> {
 
     /**
      * Creates a new instance of the dependency.
+     * Gets the dependency.
      *
-     * If no arguments are passed, and the provider used requires arguments
-     * (ex: providing a factory that takes arguments), the `Injector` attempts
-     * to resolve the arguments. Note that how exactly arguments are used
-     * depends on the specific `Provider` implementation.
+     * If this dependency is a singleton, and has not yet been accessed,
+     * a new instance of the dependency will be created. This allows for
+     * lazy loading and a better user experience.
+     *
+     * If this dependency is not a singleton, a new intance will be created
+     * each time.
      *
      * @param injector  The injector the provider is being bound to
-     * @param args      Optional arguments to pass during dependency construction
      *
      * @returns a new instance of the dependency
      */
-    create(injector: Injector): T;
+    get(injector: Injector): T;
 }
 
 /**
@@ -76,49 +78,56 @@ export interface Provider<T> {
  */
 export class ClassProvider<T> implements Provider<T> {
 
-    clazz: Type<T>;
-    token: InjectorToken<T>;
+    private instance?: T;
+    public token: InjectorToken<T>;
 
-    constructor(clazz: Type<T>, token?: InjectorToken<T>) {
-        this.clazz = clazz;
-
+    constructor(private clazz: Type<T>, private isSingleton: boolean, token?: InjectorToken<T>) {
         if (token)
             this.token = token;
         else
             this.token = clazz;
     }
 
-    public create(injector: Injector): T {
-        // return new this.clazz(args);
-        return injector.apply<T>(this.clazz);
+    public get(injector: Injector): T {
+        if (this.isSingleton) {
+            if (!this.instance) {
+                this.instance = injector.apply<T>(this.clazz);
+            }
+            return this.instance;
+
+        } else {
+            // return new this.clazz(args);
+            return injector.apply<T>(this.clazz);
+        }
     }
 }
 
 export class ObjectProvider<T> implements Provider<T> {
-    obj: T;
-    token: InjectorToken<T>;
 
-    constructor(obj: T, token: InjectorToken<T>) {
-        this.obj = obj;
-        this.token = token;
-    }
+    constructor(private obj: T, public token: InjectorToken<T>) { }
 
-    public create(injector: Injector): T {
+    public get(injector: Injector): T {
         return this.obj;
     }
 }
 
 export class FactoryProvider<T> implements Provider<T> {
-    factory: FactoryFunction<T>;
-    token: InjectorToken<T>;
 
-    constructor(factory: FactoryFunction<T>, token: InjectorToken<T>) {
-        this.factory = factory;
-        this.token = token;
-    }
+    private instance?: T;
 
-    public create(injector: Injector): T {
-        return injector.apply(this.factory);
+    constructor(private factory: FactoryFunction<T>, private isSingleton: boolean, public token: InjectorToken<T>) { }
+
+    public get(injector: Injector): T {
+
+        if (this.isSingleton) {
+            if (!this.instance) {
+                this.instance = injector.apply(this.factory);
+            }
+            return this.instance;
+
+        } else {
+            return injector.apply(this.factory);
+        }
     }
 }
 
@@ -134,6 +143,21 @@ export interface ProviderOptions<T> {
 
   /** Provide an object */
   provideConstant?: T;
+
+  /**
+   * Whether or not this dependency should be a singleton. defaults to false.
+   *
+   * Note that this option only applies to classes and factories. Constants are
+   * never singleltons. Setting this option will not change how constants are provided.
+   *
+   * If this is true, a single instance will be created
+   * the first time a dependent accesses it. All dependents will use the same
+   * instance of the dependency.
+   *
+   * If this is false, or if this flag is not set, a new instance of the
+   * dependency will be created each time it is injected into a dependent.
+   */
+  singleton?: boolean;
 }
 
 /**
@@ -183,7 +207,7 @@ export class Injector {
      * The `Map` that stores this injector's dependencies. `InjectorToken`s are
      * used as the keys for easy lookup.
      */
-    private dependencies: Map<InjectorToken<any>, any>;
+    private dependencies: Map<InjectorToken<any>, Provider<any>>;
     /**
      * The next `Injector` in the resolution hierarchy. A value of `null` means
      * this `Injector` is the root `Injector` and therefore has no parent.
@@ -234,7 +258,7 @@ export class Injector {
     }
 
     public bind<T>(options: ProviderOptions<T>): this;
-    
+
     /**
      * Binds a `Provider` to the `Injector`. Once a provider has been bound,
      * it becomes an accessible dependency that can be injected or obtained
@@ -255,19 +279,19 @@ export class Injector {
         }
 
 
-        if((dto as Provider<T>).create && (dto as Provider<T>).token) {     // dto is a Provider
+        if((dto as Provider<T>).get && (dto as Provider<T>).token) {     // dto is a Provider
             provider = dto as Provider<T>;
 
         } else {
             if ((dto as ProviderOptions<T>).provide) {                      // dto specifies a class provider
-                let { key, provide } = dto as ProviderOptions<T>;
+                let { key, provide, singleton = false } = dto as ProviderOptions<T>;
                 // @ts-ignore
-                provider = new ClassProvider<T>(provide, key);
+                provider = new ClassProvider<T>(provide, singleton, key);
 
             } else if ((dto as ProviderOptions<T>).provideFactory != null) { // dto specifies a factory provider
-                let { key, provideFactory } = dto as ProviderOptions<T>;
+                let { key, provideFactory, singleton = false } = dto as ProviderOptions<T>;
                 // @ts-ignore
-                provider = new FactoryProvider<T>(provideFactory, key);
+                provider = new FactoryProvider<T>(provideFactory, singleton, key);
 
             } else if ((dto as ProviderOptions<T>).provideConstant) {        // dto specifies a const provider
                 let { key, provideConstant } = dto as ProviderOptions<T>;
@@ -275,7 +299,7 @@ export class Injector {
                 provider = new ObjectProvider<T>(provideConstant, key);
 
             } else {                                                        // class provider again
-                provider = new ClassProvider(dto as Type<T>);
+                provider = new ClassProvider(dto as Type<T>, false);
             }
         }
 
@@ -302,7 +326,7 @@ export class Injector {
         }
 
         // Add the dependency to the dependency map
-        this.dependencies.set(token, provider.create(this));
+        this.dependencies.set(token, provider);
 
         return this;
     }
@@ -373,7 +397,7 @@ export class Injector {
         return tokens.map(token => {
             // Check this injector for the dependency
             if (this.dependencies.has(token))
-                return this.dependencies.get(token);
+                return this.dependencies.get(token)!.get(this);
             // If not found, check the parent
             else if (this.parent)
                 return this.parent.resolve<T, K>(token);

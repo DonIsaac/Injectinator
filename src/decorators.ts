@@ -10,7 +10,22 @@ import 'reflect-metadata';
 import { InjectorToken, Type } from './di';
 import { Injector } from './injector';
 
-export type PropertyOrClassDecorator = (target: Object, propertyKey?: string | symbol) => void;
+/**
+ * An InjectionDecorator is a decorator function that injects a dependency into
+ * some dependent. This may be a class, property, or parameter decorator.
+ *
+ * @see https://www.typescriptlang.org/docs/handbook/decorators
+ *
+ * @param target    The constructor function for a static property, or the
+ *                  class's prototype for an instance property
+ * @param prop      The name of the property if this is a property or parameter
+ *                  decorator, undefined otherwise.
+ * @param index     The ordinal index of the parameter inside the function's
+ *                  parameter list if this should be a parameter decorator,
+ *                  undefined otherwise
+ */
+export type InjectionDecorator = (target: Function | Object, prop?: string | symbol, index?: number) => void;
+export const INJECTABLE_SYMBOL = Symbol.for('@@Injectable');
 
 // TODO: This token isn't ever used. Should it be implemented or removed?
 export function Injectable(token?: InjectorToken<any>): ClassDecorator {
@@ -19,6 +34,7 @@ export function Injectable(token?: InjectorToken<any>): ClassDecorator {
             token = target as Type<any>;
 
         Reflect.defineMetadata('di:token', token, target);
+        Reflect.defineMetadata(INJECTABLE_SYMBOL, true, target);
     };
 }
 
@@ -59,11 +75,11 @@ export interface InjectPropOptions<T> {
 // }
 
 
-export function Inject<T>(): PropertyOrClassDecorator;
-export function Inject<T>(token: InjectorToken<T>): PropertyOrClassDecorator;
-export function Inject<T>(providedIn: Injector): PropertyOrClassDecorator;
-export function Inject<T>(opts: InjectPropOptions<T>): PropertyOrClassDecorator;
-export function Inject<T>(arg?: any): PropertyOrClassDecorator {
+export function Inject<T>(): InjectionDecorator;
+export function Inject<T>(token: InjectorToken<T>): InjectionDecorator;
+export function Inject<T>(providedIn: Injector): InjectionDecorator;
+export function Inject<T>(opts: InjectPropOptions<T>): InjectionDecorator;
+export function Inject<T>(arg?: any): InjectionDecorator {
     let token: InjectorToken<T>;
     let injector: Injector;
 
