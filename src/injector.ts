@@ -7,6 +7,7 @@
  * @license MIT
  */
 import { InjectorToken, Type, FactoryFunction } from './di';
+import { SINGLETON_SYMBOL } from './decorators';
 
 /**
  * A `Provider` is used to deliver a dependency to an `Injector`.
@@ -79,13 +80,22 @@ export interface Provider<T> {
 export class ClassProvider<T> implements Provider<T> {
 
     private instance?: T;
+	private isSingleton: boolean;
     public token: InjectorToken<T>;
 
-    constructor(private clazz: Type<T>, private isSingleton: boolean, token?: InjectorToken<T>) {
+    constructor(private clazz: Type<T>, isSingleton?: boolean, token?: InjectorToken<T>) {
         if (token)
             this.token = token;
         else
             this.token = clazz;
+
+        if (isSingleton != null) {
+		    this.isSingleton = isSingleton;
+		} else if (Reflect.hasMetadata(SINGLETON_SYMBOL, clazz)) {
+			this.isSingleton = !!Reflect.getMetadata(SINGLETON_SYMBOL, clazz);
+		} else {
+            this.isSingleton = false;
+        }
     }
 
     public get(injector: Injector): T {
@@ -257,8 +267,6 @@ export class Injector {
         return new Injector(this);
     }
 
-    public bind<T>(options: ProviderOptions<T>): this;
-
     /**
      * Binds a `Provider` to the `Injector`. Once a provider has been bound,
      * it becomes an accessible dependency that can be injected or obtained
@@ -283,23 +291,24 @@ export class Injector {
             provider = dto as Provider<T>;
 
         } else {
-            if ((dto as ProviderOptions<T>).provide) {                      // dto specifies a class provider
+            if ((dto as ProviderOptions<T>).provide != null) {                // dto specifies a class provider
                 let { key, provide, singleton = false } = dto as ProviderOptions<T>;
-                // @ts-ignore
-                provider = new ClassProvider<T>(provide, singleton, key);
+                provider = new ClassProvider<T>(provide!, singleton, key);
 
             } else if ((dto as ProviderOptions<T>).provideFactory != null) { // dto specifies a factory provider
                 let { key, provideFactory, singleton = false } = dto as ProviderOptions<T>;
-                // @ts-ignore
-                provider = new FactoryProvider<T>(provideFactory, singleton, key);
+                if (key == null)
+                    throw new Error(`You must supply an InjectorToken when binding a factory function. Set the InjectorToken with the 'key' property.`)
+                provider = new FactoryProvider<T>(provideFactory!, singleton, key);
 
-            } else if ((dto as ProviderOptions<T>).provideConstant) {        // dto specifies a const provider
+            } else if ((dto as ProviderOptions<T>).provideConstant != null) {        // dto specifies a const provider
                 let { key, provideConstant } = dto as ProviderOptions<T>;
-                // @ts-ignore
-                provider = new ObjectProvider<T>(provideConstant, key);
+                if (key == null)
+                    throw new Error(`You must supply an InjectorToken when binding an object constant. Set the InjectorToken with the 'key' property.`)
+                provider = new ObjectProvider<T>(provideConstant!, key);
 
             } else {                                                        // class provider again
-                provider = new ClassProvider(dto as Type<T>, false);
+                provider = new ClassProvider(dto as Type<T>);
             }
         }
 
@@ -365,7 +374,7 @@ export class Injector {
         );
 
         if (!args)
-            throw new Error(`Failed to determine paramater types for ${fnOrConstructor}.`);
+            throw new Error(`Failed to determine parameter types for ${fnOrConstructor}.`);
 
         let injections = this.resolve<T, keyof T>(...args);
 
@@ -375,7 +384,15 @@ export class Injector {
          */
         if (fnOrConstructor.prototype) {
             let _constructor = fnOrConstructor as Type<T>;
-            return new _constructor(...injections);
+            try {
+                return new _constructor(...injections);
+            } catch (e) {
+                let err
+                let name = fnOrConstructor.name || 'an unknown function'
+                let fn = fnOrConstructor.name || 'factoryFunction'
+                throw new Error(`Tried to create a new instance of ${name}, but it is not a class. Use "injector.bind({ provideFactory: ${name} }) instead.`);
+            }
+
         } else {
             let factory = fnOrConstructor as FactoryFunction<T>;
             return factory(...injections);

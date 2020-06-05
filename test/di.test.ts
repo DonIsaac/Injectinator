@@ -5,6 +5,7 @@
  * @license MIT
  */
 import { Injector, Inject, Injectable, Provider, ClassProvider } from '../src/';
+import { SINGLETON_SYMBOL, Singleton } from '../src/decorators';
 import 'reflect-metadata';
 
 /**
@@ -105,6 +106,55 @@ test('Inject property decorator injects expected value', () => {
   expect(target.dep).toBeDefined();
   expect<string>(target.dep.foo()).toEqual('Foo called, prop: Dependency property');
 }); // end test
+
+test('Singleton dependencies are only created once', () => {
+
+  let aCount: number = 0;
+
+  @Injectable()
+  @Singleton
+  class A {
+
+    static count: number = 0;
+    constructor() {
+      A.count++;
+    }
+  }
+
+  @Inject()
+  class B {
+    static count: number = 0;
+    constructor(public a: A) {
+      B.count++;
+    }
+  }
+
+  @Inject()
+  class C {
+    constructor(public b: B) {}
+  }
+
+  Injector.GlobalInjector
+    .bind(A)
+    .bind(B)
+    .bind(C);
+
+  let one: C   = Injector.GlobalInjector.apply(C);
+  let two: C   = Injector.GlobalInjector.apply(C);
+  let three: C = Injector.GlobalInjector.apply(C);
+
+  expect(Reflect.getMetadata(SINGLETON_SYMBOL, A)).toBeTruthy();
+  expect(one?.b?.a).toBeTruthy();
+  expect(A.count).toEqual(1);
+  expect(B.count).toEqual(3);
+  // a is a singleton, so they should be the same object
+  expect(one.b.a).toBe(two.b.a);
+  expect(one.b.a).toBe(three.b.a);
+  // b is not a singleton, so they should not be the same object
+  expect(one.b).not.toBe(two.b);
+  expect(one.b).not.toBe(three.b);
+
+})
 
 test('Equipt a soldier for battle', function () {
   // Create a new Injector

@@ -26,6 +26,8 @@ import { Injector } from './injector';
  */
 export type InjectionDecorator = (target: Function | Object, prop?: string | symbol, index?: number) => void;
 export const INJECTABLE_SYMBOL = Symbol.for('@@Injectable');
+export const TOKEN_SYMBOL      = Symbol.for('di:token');
+export const SINGLETON_SYMBOL  = Symbol.for('di:singleton');
 
 // TODO: This token isn't ever used. Should it be implemented or removed?
 export function Injectable(token?: InjectorToken<any>): ClassDecorator {
@@ -33,7 +35,7 @@ export function Injectable(token?: InjectorToken<any>): ClassDecorator {
         if (!token)
             token = target as Type<any>;
 
-        Reflect.defineMetadata('di:token', token, target);
+        Reflect.defineMetadata(TOKEN_SYMBOL, token, target);
         Reflect.defineMetadata(INJECTABLE_SYMBOL, true, target);
     };
 }
@@ -46,34 +48,17 @@ export interface InjectPropOptions<T> {
     providedIn?: Injector;
 }
 
-// export function Inject(): ClassDecorator {
-//   return function (target: Function): void {
-//     // empty
-//   };
-// }
-// export function Inject<T>(token: InjectorToken<T>): PropertyOrClassDecorator;
-// export function Inject<T>(token: InjectPropOptions<T>): PropertyOrClassDecorator;
-// export function Inject<T>(opts: InjectorToken<T> | InjectPropOptions<T>): PropertyOrClassDecorator {
-//   return function (target: Object | Function, key?: string | symbol): void {
-//     if (key) { // key exists iff Inject is used as a property decorator
-//       let { token, providedIn } = opts;
-
-//       if (!token)
-//         token = Reflect.getMetadata('design:type', target, key);
-
-//       if (providedIn) {
-//         let dependency = ((opts.providedIn) as Injector).resolve<any, any>(token as InjectorToken<any>)[0];
-
-//         Object.defineProperty(target, key, {
-//           value: dependency
-//         });
-//       }
-//     } else {
-//       // TODO
-//     }
-//   };
-// }
-
+/**
+ * Marks a dependency class as a singleton. This is a convienence decorator
+ * for the existing 'singleton' property accepted in the options object
+ * for `Injector#bind`. Setting the `singleton` property to `false` during
+ * binding will override this decorator.
+ *
+ * @see Injector#bind
+ */
+export function Singleton(target: Function): void {
+	Reflect.defineMetadata(SINGLETON_SYMBOL, true, target);
+}
 
 export function Inject<T>(): InjectionDecorator;
 export function Inject<T>(token: InjectorToken<T>): InjectionDecorator;
