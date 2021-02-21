@@ -1,19 +1,22 @@
+
 /**
- * index.ts
+ * Index.ts
  *
  * Exposes Injectinator's public interface for encapsulation and convenience.
  *
  * @author Donald Isaac
  * @license MIT
  */
+import 'reflect-metadata';
+
 export {
     Type,
     InjectorToken,
-    FactoryFunction,
-} from './di';
+    FactoryFunction
+} from './types';
 export {
     Injectable,
     Inject,
-    Singleton,
+    Singleton
 } from './decorators';
 export * from './injector';

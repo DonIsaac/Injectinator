@@ -1,5 +1,5 @@
 /**
- * di.ts
+ * Types.ts
  *
  * Defines globally used data types and interfaces.
  *
@@ -7,7 +7,6 @@
  * @license MIT
  *
  */
-import 'reflect-metadata';
 
 /**
  * A class/constructor/newable function with type `T`.
@@ -27,5 +26,5 @@ export type InjectorToken<T> = string | symbol | Type<T>;
 /**
  * A factory function that creates an object or new instance of a class.
  */
-export type FactoryFunction<T> = (...args: any[]) => T;
+export type FactoryFunction<T, U extends any[] = any[]> = (...args: U) => T;
 // T extends (...args: InjectorToken<any>[]) => infer U ? U : any;

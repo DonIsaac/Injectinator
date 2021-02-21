@@ -1,5 +1,5 @@
 /**
- * decorators.ts
+ * Decorators.ts
  *
  * Decorators for providing and injecting dependencies via an `Injector`.
  *
@@ -7,7 +7,7 @@
  * @license MIT
  */
 import 'reflect-metadata';
-import { InjectorToken, Type } from './di';
+import { InjectorToken, Type } from './types';
 import { Injector } from './injector';
 
 /**
@@ -24,19 +24,37 @@ import { Injector } from './injector';
  *                  parameter list if this should be a parameter decorator,
  *                  undefined otherwise
  */
-export type InjectionDecorator = (target: Function | Object, prop?: string | symbol, index?: number) => void;
+export type InjectionDecorator = (
+    target: Function | Object,
+    prop?: string | symbol,
+    index?: number
+) => void;
+
+/** @protected */
 export const INJECTABLE_SYMBOL = Symbol.for('@@Injectable');
-export const TOKEN_SYMBOL      = Symbol.for('di:token');
-export const SINGLETON_SYMBOL  = Symbol.for('di:singleton');
+
+/** @protected */
+export const TOKEN_SYMBOL = Symbol.for('di:token');
+
+/** @protected */
+export const SINGLETON_SYMBOL = Symbol.for('di:singleton');
 
 // TODO: This token isn't ever used. Should it be implemented or removed?
-export function Injectable(token?: InjectorToken<any>): ClassDecorator {
-    return function (target: Function): void {
-        if (!token)
+/**
+ *
+ * @param token
+ */
+export function Injectable (token?: InjectorToken<any>): ClassDecorator {
+    return function _InjectableDecorator (target: Function): void {
+
+        if (!token) {
+            // eslint-disable-next-line no-param-reassign
             token = target as Type<any>;
+        }
 
         Reflect.defineMetadata(TOKEN_SYMBOL, token, target);
         Reflect.defineMetadata(INJECTABLE_SYMBOL, true, target);
+
     };
 }
 
@@ -54,47 +72,79 @@ export interface InjectPropOptions<T> {
  * for `Injector#bind`. Setting the `singleton` property to `false` during
  * binding will override this decorator.
  *
+ * @param target
+ *
  * @see Injector#bind
  */
-export function Singleton(target: Function): void {
-	Reflect.defineMetadata(SINGLETON_SYMBOL, true, target);
+export function Singleton (target: Function): void {
+
+    Reflect.defineMetadata(
+        SINGLETON_SYMBOL,
+        true,
+        target
+    );
+
 }
 
+/**
+ *
+ */
 export function Inject<T>(): InjectionDecorator;
 export function Inject<T>(token: InjectorToken<T>): InjectionDecorator;
 export function Inject<T>(providedIn: Injector): InjectionDecorator;
 export function Inject<T>(opts: InjectPropOptions<T>): InjectionDecorator;
-export function Inject<T>(arg?: any): InjectionDecorator {
-    let token: InjectorToken<T>;
-    let injector: Injector;
 
-    if (!arg) {                                     // No param provided
+/**
+ *
+ * @param arg
+ */
+export function Inject<T> (arg?: InjectorToken<T> | Injector | InjectPropOptions<T>): InjectionDecorator {
+
+    let injector: Injector,
+        token: InjectorToken<T> | undefined;
+
+    // No param provided
+    if (!arg) {
         injector = Injector.GlobalInjector;
-    } else if (arg.token || arg.providedIn) {       // InjectPropOptions provided
-        token = arg.token;
-        injector = arg.providedIn || Injector.GlobalInjector;
-    } else if (arg instanceof Injector) {            // Injector only provided
+
+    // InjectPropOptions provided
+    } else if (
+        (arg as InjectPropOptions<T>).token ||
+        (arg as InjectPropOptions<T>).providedIn
+    ) {
+        // eslint-disable-next-line prefer-destructuring
+        token = (arg as InjectPropOptions<T>).token;
+        injector = (arg as InjectPropOptions<T>).providedIn ?? Injector.GlobalInjector;
+
+    // Injector only provided
+    } else if (arg instanceof Injector) {
         injector = arg as Injector;
+
+    // InjectorToken only provided
     } else {
-        token = arg as InjectorToken<T>;              // InjectorToken only provided
+        token = arg as InjectorToken<T>;
         injector = Injector.GlobalInjector;
     }
 
-    return function (target: Object | Function, key?: string | symbol): void {
-        // key exists iff Inject is used as a property decorator
-        if (key) {
-            token = token || Reflect.getMetadata('design:type', target, key);
-            // No token provided AND no token could be resolved
-            if (!token)
-                throw new Error(`Unable to resolve InjectorToken for property ${String(key)}`);
+    return function _InjectDecorator (target: Object | Function, key?: string | symbol): void {
 
-            // let dependency = injector.get(token);
-            let [dependency] = injector.resolve<any, any>(token);
-            Object.defineProperty(target, key, {
-                value: dependency
-            });
+        // Key exists iff Inject is used as a property decorator
+        if (key) {
+            token = token ?? Reflect.getMetadata('design:type', target, key);
+            // No token provided AND no token could be resolved
+            if (!token) {
+                throw new Error(`Unable to resolve InjectorToken for property ${String(key)}`);
+            }
+
+            // Let dependency = injector.get(token);
+            const [dependency] = injector.resolve<any, any>(token);
+
+            Object.defineProperty(target, key, { value: dependency });
+
         } else { // No key means that this is a class decorator
             // TODO
         }
+
     };
+
 }
